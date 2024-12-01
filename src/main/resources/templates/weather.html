@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>날씨 정보 앱</title>
+
+    <!-- jQuery, jQuery UI 및 폰트어썸 -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.15.2/dist/full.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+</head>
+<body>
+<!-- 상단 메뉴 -->
+<div class="fixed top-0 left-0 w-full bg-gray-800 text-white shadow-md z-10">
+    <div class="container mx-auto flex justify-between items-center py-3 px-5">
+        <!-- LOGO 버튼 -->
+        <a href="/faq" class="text-xl font-bold text-white hover:text-gray-300">LOGO</a>
+
+        <!-- 메뉴 링크 -->
+        <div class="space-x-4">
+            <a href="/weather" class="text-white hover:text-gray-300">WEATHER</a>
+        </div>
+    </div>
+</div>
+
+<!-- 아래의 여백으로 컨텐츠 상단이 가려지지 않도록 조정 -->
+<div class="pt-24"></div>
+
+<!-- 날씨 조회 폼 -->
+
+<div class="container mx-auto mt-10 p-8 bg-white rounded-lg shadow-md text-center max-w-md">
+    <h1 class="text-2xl font-bold mb-6">지역 선택 및 날씨 정보</h1>
+    <!-- 지역 선택 드롭다운 -->
+    <select id="regionSelect" class="select select-bordered w-full p-2 border border-gray-300 rounded-md mb-4 text-gray-700">
+        <option value="">지역을 선택하세요</option>
+        <option value="서울">서울</option>
+        <option value="부산">부산</option>
+        <option value="대구">대구</option>
+        <option value="인천">인천</option>
+        <option value="광주">광주</option>
+        <option value="대전">대전</option>
+        <option value="울산">울산</option>
+        <option value="제주">제주</option>
+    </select>
+    <button id="getInfoBtn" class="btn btn-primary w-full bg-blue-500 hover:bg-blue-700 text-white font-semibold py-2 rounded-md">정보 조회</button>
+
+    <!-- 정보 표시 영역 -->
+    <div id="infoDisplay" class="info-display mt-6 text-left"></div>
+</div>
+
+<script type="text/javascript">
+    const apiKey = 'YOUR_API_KEY';
+
+    $(document).ready(function () {
+        $('#getInfoBtn').click(function () {
+            const selectedRegion = $('#regionSelect').val();
+            if (!selectedRegion) {
+                alert("지역을 선택하세요.");
+                return;
+            }
+            fetchRegionInfo(selectedRegion);
+        });
+    });
+
+    function fetchRegionInfo(region) {
+        // 좌표 가져오기 및 날씨 정보 조회
+        $.ajax({
+            url: 'https://api.openweathermap.org/geo/1.0/direct?q=' + region + '&limit=1&appid=' + apiKey,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.length > 0) {
+                    const lat = data[0].lat;
+                    const lon = data[0].lon;
+                    getWeatherByCoordinates(lat, lon, region);
+                    fetchTouristAttractions(region);
+                } else {
+                    alert("지역 정보를 찾을 수 없습니다.");
+                }
+            },
+            error: function (error) {
+                console.error("Error fetching coordinates:", error);
+                alert("지역 정보를 가져오는 데 실패했습니다.");
+            }
+        });
+    }
+
+    function getWeatherByCoordinates(lat, lon, regionName) {
+        $.ajax({
+            url: 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.cod === 200) {
+                    displayWeather(data, regionName);
+                } else {
+                    alert("날씨 정보를 찾을 수 없습니다.");
+                }
+            },
+            error: function (error) {
+                console.error("Error fetching weather data:", error);
+                alert("날씨 데이터를 가져오는 데 실패했습니다.");
+            }
+        });
+    }
+
+    function fetchTouristAttractions(region) {
+        const serviceKey = 'YOUR_SERVICE_KEY'; // 여기 본인의 서비스 키 입력
+        const areaCode = getAreaCode(region); // 지역명에 따른 areaCode 반환 함수
+        const url = `http://apis.data.go.kr/B551011/KorService1/areaBasedList1?serviceKey=${serviceKey}&numOfRows=5&pageNo=1&MobileOS=ETC&MobileApp=AppTest&areaCode=${areaCode}&contentTypeId=12&_type=json`;
+
+        // 관광지 정보 요청
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                const items = response.response.body.items.item; // API에서 제공하는 아이템 리스트
+                displayTouristAttractions(items);
+            },
+            error: function () {
+                alert('관광지 정보를 불러오지 못했습니다.');
+            }
+        });
+    }
+
+    function getAreaCode(region) {
+        const areaCodes = {
+            '서울': 1,
+            '부산': 6,
+            '대구': 4,
+            '인천': 2,
+            '광주': 5,
+            '대전': 3,
+            '울산': 7,
+            '제주': 39
+        };
+        return areaCodes[region] || 1; // 기본값: 서울
+    }
+
+    function displayTouristAttractions(items) {
+        let html = '<h2 class="text-xl font-semibold mt-6 mb-4">추천 관광지</h2>';
+        items.forEach(item => {
+            html += `
+            <div class="mb-6 p-4 border rounded-lg shadow-md">
+                <h3 class="text-lg font-bold">${item.title}</h3>
+                ${item.firstimage ? `<img src="${item.firstimage}" alt="${item.title}" class="w-full h-64 object-cover mt-2 mb-4 rounded-md">` : ''}
+                <p><strong>주소:</strong> ${item.addr1 || '주소 정보 없음'} ${item.addr2 || ''}</p>
+                ${item.tel ? `<p><strong>연락처:</strong> ${item.tel}</p>` : ''}
+                ${item.overview ? `<p class="mt-2">${item.overview}</p>` : ''}
+            </div>
+        `;
+        });
+        $('#infoDisplay').append(html);
+    }
+
+    function displayWeather(data, regionName) {
+        const currentTime = new Date().toLocaleString('ko-KR');
+        $('#infoDisplay').html(
+            '<h2 class="text-xl font-semibold mb-4">' + regionName + ' 날씨</h2>' +
+            '<p><strong>현재 시간:</strong> ' + currentTime + '</p>' +
+            '<p><strong>온도:</strong> ' + data.main.temp + '°C</p>' +
+            '<p><strong>습도:</strong> ' + data.main.humidity + '%</p>' +
+            '<p><strong>풍속:</strong> ' + data.wind.speed + ' m/s</p>' +
+            '<p><strong>상태:</strong> ' + data.weather[0].description + '</p>'
+        );
+    }
+</script>
+</body>
+</html>
